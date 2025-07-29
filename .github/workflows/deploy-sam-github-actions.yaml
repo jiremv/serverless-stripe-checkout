@@ -10,6 +10,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    env:
+      TESTING_STACK_NAME: ${{ secrets.TESTING_STACK_NAME }}
+      TESTING_REGION: ${{ secrets.TESTING_REGION }}
+      TESTING_ARTIFACTS_BUCKET: ${{ secrets.TESTING_ARTIFACTS_BUCKET }}
+      TESTING_CLOUDFORMATION_EXECUTION_ROLE: ${{ secrets.TESTING_CLOUDFORMATION_EXECUTION_ROLE }}
+
+      PROD_STACK_NAME: ${{ secrets.PROD_STACK_NAME }}
+      PROD_REGION: ${{ secrets.PROD_REGION }}
+      PROD_ARTIFACTS_BUCKET: ${{ secrets.PROD_ARTIFACTS_BUCKET }}
+      PROD_CLOUDFORMATION_EXECUTION_ROLE: ${{ secrets.PROD_CLOUDFORMATION_EXECUTION_ROLE }}
+
+      STRIPE_API_KEY_ARN_DEV: ${{ secrets.STRIPE_API_KEY_ARN_DEV }}
+      STRIPE_WEBHOOK_SECRET_ARN_DEV: ${{ secrets.STRIPE_WEBHOOK_SECRET_ARN_DEV }}
+
+      STRIPE_API_KEY_ARN_PROD: ${{ secrets.STRIPE_API_KEY_ARN_PROD }}
+      STRIPE_WEBHOOK_SECRET_ARN_PROD: ${{ secrets.STRIPE_WEBHOOK_SECRET_ARN_PROD }}
+
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -33,19 +50,20 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           role-to-assume: ${{ secrets.TESTING_CLOUDFORMATION_EXECUTION_ROLE }}
           aws-region: ${{ secrets.TESTING_REGION }}
+          duration-seconds: 900
 
       - name: Deploy to DEV
         run: |
           sam deploy \
-            --stack-name ${{ secrets.TESTING_STACK_NAME }} \
-            --region ${{ secrets.TESTING_REGION }} \
-            --s3-bucket ${{ secrets.TESTING_ARTIFACTS_BUCKET }} \
+            --stack-name $TESTING_STACK_NAME \
+            --region $TESTING_REGION \
+            --s3-bucket $TESTING_ARTIFACTS_BUCKET \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset \
-            --role-arn ${{ secrets.TESTING_CLOUDFORMATION_EXECUTION_ROLE }} \
+            --role-arn $TESTING_CLOUDFORMATION_EXECUTION_ROLE \
             --parameter-overrides \
-              StripeApiKeySecretArn=${{ secrets.STRIPE_API_KEY_ARN_DEV }} \
-              StripeWebhookSecretArn=${{ secrets.STRIPE_WEBHOOK_SECRET_ARN_DEV }}
+              StripeApiKeySecretArn=$STRIPE_API_KEY_ARN_DEV \
+              StripeWebhookSecretArn=$STRIPE_WEBHOOK_SECRET_ARN_DEV
 
       - name: Configure AWS credentials for PROD
         uses: aws-actions/configure-aws-credentials@v2
@@ -54,16 +72,17 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           role-to-assume: ${{ secrets.PROD_CLOUDFORMATION_EXECUTION_ROLE }}
           aws-region: ${{ secrets.PROD_REGION }}
+          duration-seconds: 900
 
       - name: Deploy to PROD
         run: |
           sam deploy \
-            --stack-name ${{ secrets.PROD_STACK_NAME }} \
-            --region ${{ secrets.PROD_REGION }} \
-            --s3-bucket ${{ secrets.PROD_ARTIFACTS_BUCKET }} \
+            --stack-name $PROD_STACK_NAME \
+            --region $PROD_REGION \
+            --s3-bucket $PROD_ARTIFACTS_BUCKET \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset \
-            --role-arn ${{ secrets.PROD_CLOUDFORMATION_EXECUTION_ROLE }} \
+            --role-arn $PROD_CLOUDFORMATION_EXECUTION_ROLE \
             --parameter-overrides \
-              StripeApiKeySecretArn=${{ secrets.STRIPE_API_KEY_ARN_PROD }} \
-              StripeWebhookSecretArn=${{ secrets.STRIPE_WEBHOOK_SECRET_ARN_PROD }}
+              StripeApiKeySecretArn=$STRIPE_API_KEY_ARN_PROD \
+              StripeWebhookSecretArn=$STRIPE_WEBHOOK_SECRET_ARN_PROD
