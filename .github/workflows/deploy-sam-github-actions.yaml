@@ -30,19 +30,41 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v3
 
+      - name: Set up Java 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
       - name: Set up AWS SAM CLI
         uses: aws-actions/setup-sam@v2
-
-      - name: Install dependencies
-        run: npm install
 
       - name: Build SAM application
         run: sam build
 
       - name: Deploy to DEV
         run: |
-          sam deploy             --stack-name ${{ env.TESTING_STACK_NAME }}             --region ${{ env.TESTING_REGION }}             --s3-bucket ${{ env.TESTING_ARTIFACTS_BUCKET }}             --capabilities CAPABILITY_IAM             --no-fail-on-empty-changeset             --role-arn ${{ env.TESTING_CLOUDFORMATION_EXECUTION_ROLE }}             --parameter-overrides               StripeApiKeySecretArn=${{ env.STRIPE_API_KEY_ARN_DEV }}               StripeWebhookSecretArn=${{ env.STRIPE_WEBHOOK_SECRET_ARN_DEV }}
+          sam deploy \
+            --stack-name ${{ env.TESTING_STACK_NAME }} \
+            --region ${{ env.TESTING_REGION }} \
+            --s3-bucket ${{ env.TESTING_ARTIFACTS_BUCKET }} \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --role-arn ${{ env.TESTING_CLOUDFORMATION_EXECUTION_ROLE }} \
+            --parameter-overrides \
+              StripeApiKeySecretArn=${{ env.STRIPE_API_KEY_ARN_DEV }} \
+              StripeWebhookSecretArn=${{ env.STRIPE_WEBHOOK_SECRET_ARN_DEV }}
 
       - name: Deploy to PROD
+        if: github.ref == 'refs/heads/main'
         run: |
-          sam deploy             --stack-name ${{ env.PROD_STACK_NAME }}             --region ${{ env.PROD_REGION }}             --s3-bucket ${{ env.PROD_ARTIFACTS_BUCKET }}             --capabilities CAPABILITY_IAM             --no-fail-on-empty-changeset             --role-arn ${{ env.PROD_CLOUDFORMATION_EXECUTION_ROLE }}             --parameter-overrides               StripeApiKeySecretArn=${{ env.STRIPE_API_KEY_ARN_PROD }}               StripeWebhookSecretArn=${{ env.STRIPE_WEBHOOK_SECRET_ARN_PROD }}
+          sam deploy \
+            --stack-name ${{ env.PROD_STACK_NAME }} \
+            --region ${{ env.PROD_REGION }} \
+            --s3-bucket ${{ env.PROD_ARTIFACTS_BUCKET }} \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --role-arn ${{ env.PROD_CLOUDFORMATION_EXECUTION_ROLE }} \
+            --parameter-overrides \
+              StripeApiKeySecretArn=${{ env.STRIPE_API_KEY_ARN_PROD }} \
+              StripeWebhookSecretArn=${{ env.STRIPE_WEBHOOK_SECRET_ARN_PROD }}

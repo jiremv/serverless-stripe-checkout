@@ -22,12 +22,24 @@ Globals:
     Tracing: Active
     Environment:
       Variables:
+        #STRIPE_API_KEY: !Sub '{{resolve:secretsmanager:stripe-api-key:SecretString:sk_test}}'
+        #STRIPE_API_KEY: !Sub '{{resolve:secretsmanager:${StripeApiKeySecretArn}:SecretString:STRIPE_API_KEY}}'
+        #STRIPE_WEBHOOK_SECRET: !Sub '{{resolve:secretsmanager:${StripeWebhookSecretArn}:SecretString:STRIPE_WEBHOOK_SECRET}}'
 
         STRIPE_API_KEY: !Sub '{{resolve:secretsmanager:${StripeApiKeySecretArn}:SecretString:sk_test}}'
         STRIPE_WEBHOOK_SECRET: !Sub '{{resolve:secretsmanager:${StripeWebhookSecretArn}:SecretString:webhook_secret}}'
 
 Resources:
 
+#  MyApi:
+#    Type: AWS::Serverless::Api
+#    Properties:
+#      Name: StripeCheckoutApi
+#      StageName: prod
+#      Cors:
+#        AllowMethods: "'POST,OPTIONS'"
+#        AllowHeaders: "'Content-Type,Authorization'"
+#        AllowOrigin: "'*'"
 
   MyApi:
     Type: AWS::ApiGateway::RestApi
