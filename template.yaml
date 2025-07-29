@@ -1,0 +1,350 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Serverless Stripe Checkout - Java 21 + API Gateway + Stripe SDK
+
+Globals:
+  Function:
+    Runtime: java21
+    Timeout: 20
+    MemorySize: 1024
+    Architectures:
+      - x86_64
+    Tracing: Active
+#    Environment:
+#      Variables:
+#        STRIPE_API_KEY: !Sub '{{resolve:secretsmanager:stripe-api-key:SecretString:sk_test}}'
+#        STRIPE_API_KEY_SECRET_ARN: !Ref StripeApiKeySecretArn
+#        STRIPE_WEBHOOK_SECRET_ARN: !Ref StripeWebhookSecretArn
+
+Resources:
+
+#  MyApi:
+#    Type: AWS::Serverless::Api
+#    Properties:
+#      Name: StripeCheckoutApi
+#      StageName: prod
+#      Cors:
+#        AllowMethods: "'POST,OPTIONS'"
+#        AllowHeaders: "'Content-Type,Authorization'"
+#        AllowOrigin: "'*'"
+
+  MyApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: Backend Serverless Stripe Checkout
+      Description: My AWS API Gateway config
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  ResourceCheckoutSession:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: create-checkout-session
+      RestApiId: !Ref MyApi
+
+  ResourceStripeWebhook:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: stripe-webhook
+      RestApiId: !Ref MyApi
+
+
+  CheckoutSessionOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'Authorization, Content-Type, X-UserId, X-Roles, X-Custom-Header, X-Amz-Date, X-Api-Key, X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            StatusCode: '200'
+        Type: MOCK
+        RequestTemplates:
+          "application/json": "{ \"statusCode\": 200 }"
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          StatusCode: '200'
+      OperationName: ckeckout-option-method
+      ResourceId: !Ref ResourceCheckoutSession
+      RestApiId: !Ref MyApi
+
+  CheckoutSessionPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Authorization, Content-Type, X-UserId, X-Roles, X-Custom-Header, X-Amz-Date, X-Api-Key, X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            StatusCode: '200'
+        Type: AWS_PROXY
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
+          - lambdaArn: !GetAtt CreateCheckoutSessionFunction.Arn
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          StatusCode: '200'
+      OperationName: ckeckout-post-method
+      ResourceId: !Ref ResourceCheckoutSession
+      RestApiId: !Ref MyApi
+
+  CreateCheckoutSessionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CustomLambdaExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: "*"
+
+#  CreateCheckoutSessionFunction:
+#    Type: AWS::Serverless::Function
+#    Properties:
+#      FunctionName: CreateCheckoutSessionFunction
+#      CodeUri: .
+#      Handler: com.checkout.CreateCheckoutSessionHandler::handleRequest
+#      Events:
+#        ApiEvent:
+#          Type: Api
+#          Properties:
+#            Path: /create-checkout-session
+#            Method: POST
+
+  CreateCheckoutSessionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: CreateCheckoutSessionFunction
+      Handler: com.checkout.CreateCheckoutSessionHandler::handleRequest
+      Runtime: java21
+      Role: !GetAtt CreateCheckoutSessionRole.Arn
+      Events:
+        CrearRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /create-checkout-session
+            Method: POST
+    DependsOn:
+      - CreateCheckoutSessionRole
+
+  CreateCheckoutSessionInvokePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: CreateCheckoutSessionInvokePolicy
+      Roles:
+        - !Ref CreateCheckoutSessionRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${CreateCheckoutSessionFunction}
+
+#  CreateCheckoutSessionFunctionLogGroup:
+#    Type: AWS::Logs::LogGroup
+#    Properties:
+#      LogGroupName: !Sub "/aws/lambda/${CreateCheckoutSessionFunction}"
+#      RetentionInDays: 1
+
+  CreateCheckoutSessionPostApiGatewayInvoke:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - MyApi
+      - CreateCheckoutSessionFunction
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CreateCheckoutSessionFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/POST/create-checkout-session
+
+#######
+
+  StripeWebhookOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'Authorization, Content-Type, X-UserId, X-Roles, X-Custom-Header, X-Amz-Date, X-Api-Key, X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            StatusCode: '200'
+        Type: MOCK
+        RequestTemplates:
+          "application/json": "{ \"statusCode\": 200 }"
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          StatusCode: '200'
+      OperationName: stripe-option-method
+      ResourceId: !Ref ResourceStripeWebhook
+      RestApiId: !Ref MyApi
+
+  StripeWebhookPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Authorization, Content-Type, X-UserId, X-Roles, X-Custom-Header, X-Amz-Date, X-Api-Key, X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            StatusCode: '200'
+        Type: AWS_PROXY
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
+          - lambdaArn: !GetAtt StripeWebhookFunction.Arn
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          StatusCode: '200'
+      OperationName: stripe-post-method
+      ResourceId: !Ref ResourceStripeWebhook
+      RestApiId: !Ref MyApi
+
+  StripeWebhookFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CustomLambdaExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: "*"
+
+#  StripeWebhookFunction:
+#    Type: AWS::Serverless::Function
+#    Properties:
+#      FunctionName: StripeWebhookFunction
+#      CodeUri: .
+#      Handler: com.checkout.StripeWebhookHandler::handleRequest
+#      Events:
+#        WebhookEvent:
+#          Type: Api
+#          Properties:
+#            Path: /stripe-webhook
+#            Method: POST
+
+  StripeWebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: StripeWebhookFunction
+      Handler: com.checkout.StripeWebhookHandler::handleRequest
+      Runtime: java21
+      Role: !GetAtt StripeWebhookFunctionRole.Arn
+      Events:
+        CrearRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /stripe-webhook
+            Method: POST
+    DependsOn:
+      - StripeWebhookFunctionRole
+
+  CrearStripeWebhookInvokePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: CrearStripeWebhookInvokePolicy
+      Roles:
+        - !Ref StripeWebhookFunctionRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${StripeWebhookFunction}
+
+#  StripeWebhookFunctionLogGroup:
+#    Type: AWS::Logs::LogGroup
+#    Properties:
+#      LogGroupName: !Sub "/aws/lambda/${StripeWebhookFunction}"
+#      RetentionInDays: 1
+
+  StripeWebhookPostApiGatewayInvoke:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - MyApi
+      - StripeWebhookFunction
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt StripeWebhookFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/POST/stripe-webhook
+
+  apiGatewayDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
+      - CheckoutSessionPostMethod
+      - StripeWebhookPostMethod
+    Properties:
+      RestApiId: !Ref MyApi
+      StageName: prod
+
+Outputs:
+  CheckoutSessionEndpoint:
+    Description: "POST endpoint to create Stripe Checkout Session"
+    Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/prod/create-checkout-session"
+
+  StripeWebhookEndpoint:
+    Description: "POST endpoint to receive Stripe Webhook events"
+    Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/prod/stripe-webhook"
