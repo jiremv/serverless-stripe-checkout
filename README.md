@@ -205,14 +205,17 @@ serverless-stripe-checkout/
      -    Está autenticado y desplegado en entorno dev/prod correctamente vía GitHub Actions y SAM.
 
    - 🔐 Seguridad
-      -    Accede a Stripe de forma segura con IAM y Secrets Manager.
-      - - Despliegue automatizado con pipeline GitHub Actions usando gh secret.
+      -   Accede a Stripe de forma segura con IAM y Secrets Manager.
+      -   Despliegue automatizado con pipeline GitHub Actions usando gh secret.
 
+     - Java
+     - ![./readme/img/img_0.png](./readme/img/img_0.png)
+     
      - Postman
-     ![./readme/img/img.png](./readme/img/img.png)
+     - ![./readme/img/img.png](./readme/img/img.png)     
      
      - Pantalla de pago de stripe con el producto y pago definido
-     ![./readme/img/img_1.png](./readme/img/img_1.png)
+     - ![./readme/img/img_1.png](./readme/img/img_1.png)
 
 ---
 
