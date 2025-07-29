@@ -5,33 +5,34 @@ on:
     branches:
       - main
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+env:
+  TESTING_STACK_NAME: serverless-stripe-checkout-dev
+  TESTING_REGION: us-west-1
+  TESTING_ARTIFACTS_BUCKET: aws-sam-cli-managed-serverless-str-artifactsbucket-ybnudupemh9u
+  TESTING_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::545200407638:role/aws-sam-cli-managed-serve-CloudFormationExecutionRo-ELbmYygqZJAA
 
-    env:
-      TESTING_STACK_NAME: serverless-stripe-checkout-dev
-      TESTING_REGION: us-west-1
-      TESTING_ARTIFACTS_BUCKET: aws-sam-cli-managed-serverless-str-artifactsbucket-ybnudupemh9u
-      TESTING_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::545200407638:role/aws-sam-cli-managed-serve-CloudFormationExecutionRo-ELbmYygqZJAA
+  PROD_STACK_NAME: serverless-stripe-checkout-prod
+  PROD_REGION: us-west-2
+  PROD_ARTIFACTS_BUCKET: aws-sam-cli-managed-serverless-str-artifactsbucket-mx0cgnmg1mck
+  PROD_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::545200407638:role/aws-sam-cli-managed-serve-CloudFormationExecutionRo-Uz1d30qGw3S6
 
-      PROD_STACK_NAME: serverless-stripe-checkout-prod
-      PROD_REGION: us-west-2
-      PROD_ARTIFACTS_BUCKET: aws-sam-cli-managed-serverless-str-artifactsbucket-mx0cgnmg1mck
-      PROD_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::545200407638:role/aws-sam-cli-managed-serve-CloudFormationExecutionRo-Uz1d30qGw3S6
+  STRIPE_API_KEY_ARN_DEV: arn:aws:secretsmanager:us-west-1:545200407638:secret:stripe-api-key-5CaMij
+  STRIPE_WEBHOOK_SECRET_ARN_DEV: arn:aws:secretsmanager:us-west-1:545200407638:secret:stripe-webhook-secret-NC6v1d
 
-      STRIPE_API_KEY_ARN_DEV: arn:aws:secretsmanager:us-west-1:545200407638:secret:stripe-api-key-5CaMij
-      STRIPE_WEBHOOK_SECRET_ARN_DEV: arn:aws:secretsmanager:us-west-1:545200407638:secret:stripe-webhook-secret-NC6v1d
-
-      STRIPE_API_KEY_ARN_PROD: arn:aws:secretsmanager:us-west-2:545200407638:secret:stripe-api-key-fuABZu
-      STRIPE_WEBHOOK_SECRET_ARN_PROD: arn:aws:secretsmanager:us-west-2:545200407638:secret:stripe-webhook-secret-VbiIoK
+  STRIPE_API_KEY_ARN_PROD: arn:aws:secretsmanager:us-west-2:545200407638:secret:stripe-api-key-fuABZu
+  STRIPE_WEBHOOK_SECRET_ARN_PROD: arn:aws:secretsmanager:us-west-2:545200407638:secret:stripe-webhook-secret-VbiIoK
       
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v3
+      - name: Checkout source code
+        uses: actions/checkout@v4
 
       - name: Set up Java 21
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -42,29 +43,40 @@ jobs:
       - name: Build SAM application
         run: sam build
 
+      - name: Configure AWS credentials for DEV
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ env.TESTING_CLOUDFORMATION_EXECUTION_ROLE }}
+          aws-region: ${{ env.TESTING_REGION }}
+
       - name: Deploy to DEV
         run: |
           sam deploy \
-            --stack-name ${{ env.TESTING_STACK_NAME }} \
-            --region ${{ env.TESTING_REGION }} \
-            --s3-bucket ${{ env.TESTING_ARTIFACTS_BUCKET }} \
+            --stack-name $TESTING_STACK_NAME \
+            --region $TESTING_REGION \
+            --s3-bucket $TESTING_ARTIFACTS_BUCKET \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset \
-            --role-arn ${{ env.TESTING_CLOUDFORMATION_EXECUTION_ROLE }} \
+            --role-arn $TESTING_CLOUDFORMATION_EXECUTION_ROLE \
             --parameter-overrides \
-              StripeApiKeySecretArn=${{ env.STRIPE_API_KEY_ARN_DEV }} \
-              StripeWebhookSecretArn=${{ env.STRIPE_WEBHOOK_SECRET_ARN_DEV }}
+              StripeApiKeySecretArn=$STRIPE_API_KEY_ARN_DEV \
+              StripeWebhookSecretArn=$STRIPE_WEBHOOK_SECRET_ARN_DEV
+
+      - name: Configure AWS credentials for PROD
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ env.PROD_CLOUDFORMATION_EXECUTION_ROLE }}
+          aws-region: ${{ env.PROD_REGION }}
 
       - name: Deploy to PROD
-        if: github.ref == 'refs/heads/main'
         run: |
           sam deploy \
-            --stack-name ${{ env.PROD_STACK_NAME }} \
-            --region ${{ env.PROD_REGION }} \
-            --s3-bucket ${{ env.PROD_ARTIFACTS_BUCKET }} \
+            --stack-name $PROD_STACK_NAME \
+            --region $PROD_REGION \
+            --s3-bucket $PROD_ARTIFACTS_BUCKET \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset \
-            --role-arn ${{ env.PROD_CLOUDFORMATION_EXECUTION_ROLE }} \
+            --role-arn $PROD_CLOUDFORMATION_EXECUTION_ROLE \
             --parameter-overrides \
-              StripeApiKeySecretArn=${{ env.STRIPE_API_KEY_ARN_PROD }} \
-              StripeWebhookSecretArn=${{ env.STRIPE_WEBHOOK_SECRET_ARN_PROD }}
+              StripeApiKeySecretArn=$STRIPE_API_KEY_ARN_PROD \
+              StripeWebhookSecretArn=$STRIPE_WEBHOOK_SECRET_ARN_PROD
