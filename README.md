@@ -208,12 +208,13 @@ serverless-stripe-checkout/
       -   Accede a Stripe de forma segura con IAM y Secrets Manager.
       -   Despliegue automatizado con pipeline GitHub Actions usando gh secret.
 
-     - Java
+   - Java
      - ![./readme/img/img_0.png](./readme/img/img_0.png)
      
-     - Postman
+   - Postman
      - ![./readme/img/img.png](./readme/img/img.png)     
      
+   - Stripe
      - Pantalla de pago de stripe con el producto y pago definido
      - ![./readme/img/img_1.png](./readme/img/img_1.png)
 
@@ -222,4 +223,6 @@ serverless-stripe-checkout/
 ## 🧑 Contacto
 
 **Paul Rivera**
+- Bachiller en Administración. Universidad ESAN
 - AWS Certified Solutions Architect - Associate
+- Oracle Java EE Master Developer
