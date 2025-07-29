@@ -188,10 +188,31 @@ serverless-stripe-checkout/
 
 ---
 
-## 🧠 Recomendado para
+## 🧠 Demostración
 
-- Arquitectos de soluciones que integran pagos de forma segura y escalable
-- Proyectos tipo MVP o prototipos con integración rápida
+✅ Backend Serverless desarrollado
+   - 🏗️ Infraestructura
+     -    AWS SAM: para definir y desplegar la infraestructura como código.
+     -    API Gateway: expone endpoints públicos (como /prod/create-checkout-session).
+     -    AWS Lambda (Java 21): contiene la lógica del backend en funciones individuales.
+     -    AWS Secrets Manager: almacena seguros los secretos de Stripe (API_KEY, WEBHOOK_SECRET).
+
+   - 🧠 Lógica del backend
+     -    El endpoint POST /create-checkout-session:
+     -    Recibe un quantity desde el frontend o Postman. 
+     -    Usa el SDK de Stripe para crear una sesión de pago.
+     -    Devuelve un checkoutUrl para redirigir al usuario a pagar.
+     -    Está autenticado y desplegado en entorno dev/prod correctamente vía GitHub Actions y SAM.
+
+   - 🔐 Seguridad
+      -    Accede a Stripe de forma segura con IAM y Secrets Manager.
+      - - Despliegue automatizado con pipeline GitHub Actions usando gh secret.
+
+     - Postman
+     ![./readme/img/img.png](./readme/img/img.png)
+     
+     - Pantalla de pago de stripe con el producto y pago definido
+     ![./readme/img/img_1.png](./readme/img/img_1.png)
 
 ---
 
