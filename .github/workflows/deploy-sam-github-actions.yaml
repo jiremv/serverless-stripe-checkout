@@ -46,6 +46,8 @@ jobs:
       - name: Configure AWS credentials for DEV
         uses: aws-actions/configure-aws-credentials@v2
         with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           role-to-assume: ${{ env.TESTING_CLOUDFORMATION_EXECUTION_ROLE }}
           aws-region: ${{ env.TESTING_REGION }}
 
@@ -65,6 +67,8 @@ jobs:
       - name: Configure AWS credentials for PROD
         uses: aws-actions/configure-aws-credentials@v2
         with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           role-to-assume: ${{ env.PROD_CLOUDFORMATION_EXECUTION_ROLE }}
           aws-region: ${{ env.PROD_REGION }}
 
