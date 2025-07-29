@@ -3,6 +3,15 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   Serverless Stripe Checkout - Java 21 + API Gateway + Stripe SDK
 
+Parameters:
+  StripeApiKeySecretArn:
+    Type: String
+    Description: ARN del secreto que contiene STRIPE_API_KEY
+
+  StripeWebhookSecretArn:
+    Type: String
+    Description: ARN del secreto que contiene STRIPE_WEBHOOK_SECRET
+
 Globals:
   Function:
     Runtime: java21
@@ -13,7 +22,10 @@ Globals:
     Tracing: Active
     Environment:
       Variables:
-        STRIPE_API_KEY: !Sub '{{resolve:secretsmanager:stripe-api-key:SecretString:sk_test}}'
+        #STRIPE_API_KEY: !Sub '{{resolve:secretsmanager:stripe-api-key:SecretString:sk_test}}'
+        STRIPE_API_KEY: !Sub '{{resolve:secretsmanager:${StripeApiKeySecretArn}:SecretString:STRIPE_API_KEY}}'
+        STRIPE_WEBHOOK_SECRET: !Sub '{{resolve:secretsmanager:${StripeWebhookSecretArn}:SecretString:STRIPE_WEBHOOK_SECRET}}'
+
 
 Resources:
 
