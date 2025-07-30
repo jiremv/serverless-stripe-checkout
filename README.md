@@ -220,6 +220,11 @@ serverless-stripe-checkout/
 
 ---
 
+## 🚀 Resumen
+
+     - Este proyecto constituye un microservicio de pagos y únicamente sirve para crear una sesión de pago usando la pasarela oficial de Stripe.
+
+
 ## 🧑 Contacto
 
 **Paul Rivera**
